@@ -1,5 +1,5 @@
 ORG 00H
-LJMP Setup
+LJMP 30H
 
 ORG 13H;Xu ly External Interrupt
 ;Trigger(P3.3 low)
@@ -11,10 +11,21 @@ SETB P3.3
 RETI
 
 ORG 30H
+AddressTran EQU 20H
+AddressTemp EQU 60H
+AddressNum1 EQU 30H
+AddressNum2 EQU 40H
 
-Setup: ;Khoi tao cac bien xay dung
-MOV R0, #30H ; Pointer of the number sequence(30H - 3FH)
-MOV R2, #15 ;Range
+Setup: ;Khoi tao cac bien xay dung 
+; A la thanh ghi khong co dinh
+MOV R0, #AddressTemp ; Pointer of the number sequence(30H - 3FH)
+; R1 Available
+; R2 Available
+; R3 Available
+; R4 Available
+; R5 70H,
+; R6 71H
+; R7 #15,
 MOV IE, #10000100B ; External interrupt with P3.3 
 MOV TMOD, #01H ; Timer 0 mode 1
 Configure: ; Do something
@@ -115,12 +126,26 @@ DivideOperatorNumber:
 JC KeyNumber
 KeyOperator:
 MOV 71H, 70H
+MOV 72H, R0  ; Luu vi tri cua so thu nhat
 RET
 KeyNumber:
 MOV @R0, 70H
+MOV 73H, @R0
 INC R0
 RET
 ProcessResult: ; Xu ly phep toan xuat ra ket qua
+RET
+
+ProcessConvertNumberBCDtoBIN:  ; Chuyen doi so BCD sang Binary
+MOV R7, #15
+MOV R0, #AddressTran
+MOV R6, 71H
+CJNE R6,#0, NumberTwo
+NumberOne:
+MOV R1, #AddressNum1
+
+NumberTwo:
+MOV R1, #AddressNum2
 RET
 
 END	
