@@ -1,4 +1,4 @@
-# Caculator8051
+# Calculator8051
 
 Đây là bản phát triển của Tú.
 

@@ -18,14 +18,14 @@ AddressNum2 EQU 40H
 
 Setup: ;Khoi tao cac bien xay dung 
 ; A la thanh ghi khong co dinh
-MOV R0, #AddressTemp ; Pointer of the number sequence(30H - 3FH)
+MOV R0, #AddressTemp ; Pointer of the number sequence(60H - 6FH)
 ; R1 Available
 ; R2 Available
 ; R3 Available
-; R4 Available
+; R4 #15,
 ; R5 70H,
-; R6 71H
-; R7 #15,
+; R6 71H,
+; R7 #8,
 MOV IE, #10000100B ; External interrupt with P3.3 
 MOV TMOD, #01H ; Timer 0 mode 1
 Configure: ; Do something
@@ -136,16 +136,118 @@ RET
 ProcessResult: ; Xu ly phep toan xuat ra ket qua
 RET
 
+InitTransportRegister:
+MOV A, @R1
+MOV @R0, A
+INC R0
+INC R1
+DJNZ R4, InitTransportRegister
+RET
+
 ProcessConvertNumberBCDtoBIN:  ; Chuyen doi so BCD sang Binary
-MOV R7, #15
+MOV R7, #8
+MOV R4, #16
+PUSH 04H
 MOV R0, #AddressTran
 MOV R6, 71H
+MOV 74H, #10
+CLR C
+PUSH 00H
 CJNE R6,#0, NumberTwo
 NumberOne:
 MOV R1, #AddressNum1
-
+PUSH 01H
+SJMP SetupConvert
 NumberTwo:
 MOV R1, #AddressNum2
-RET
+PUSH 01H
+SetupConvert:
+DEC R4
+ProcessConvert:	
+ACALL InitTransportRegister	  ; Gan ValueTran = Value @R1 (Number 1 or 2)
+POP 01H
+POP 00H
+POP 04H 
+Convert: ; Dich phai thanh ghi Multiplier
+MOV A, 74H
+RRC A
+MOV 74H, A
+JC AddAndShiftleft
+CLR C
+PUSH 04H
+PUSH 00H
+PUSH 01H
+DEC R4
+ACALL Shiftleft
+POP 01H
+POP 00H
+POP 04H
+SJMP ReturnConvert 
+AddAndShiftleft: ; Cong Product va dich trai thanh ghi Multiplicand
+CLR C
+PUSH 04H
+PUSH 00H
+PUSH 01H
+DEC R4
+ACALL ProcessAdd
+CLR C
+POP 01H
+POP 00H
+POP 04H
+PUSH 04H
+PUSH 00H
+PUSH 01H
+DEC R4
+ACALL Shiftleft
+POP 01H
+POP 00H
+POP 04H  
+ReturnConvert:DJNZ R7, Convert
+DEC R4
+MOV A, R1
+ADD A, R4
+MOV R1, A
+MOV A, @R1
+ADD A, 73H
+UntilProcessConvertNumberBCDtoBIN:
+MOV A, R1
+ADD A, R4
+MOV R1, A
+MOV A, @R1
+ADDC A, #00H
+DJNZ R4, ProcessAdd
+JNC ReCallProcessConvertNumberBCDtoBIN
+; If(C high) 
+ReCallProcessConvertNumberBCDtoBIN: RET
+
+ProcessAdd:	;Cong Product
+MOV A, R0
+ADD A, R4
+MOV R0, A
+MOV A, R1
+ADD A, R4
+MOV R1, A
+MOV A, @R1
+ADDC A, @R0
+MOV @R1, A
+DJNZ R4, ProcessAdd
+JNC ReCallProcessAdd
+; If (C high) ... 
+ReCallProcessAdd: RET
+
+Shiftleft: ; Dich trai thanh ghi Multiplicand
+MOV A, R0
+ADD A, R4
+MOV R0, A
+MOV A, @R0
+RLC A
+MOV @R0, A
+DJNZ R4,Shiftleft
+JNC ReCallShiftleft 
+; If(C high) check 74H != 0
+ReCallShiftleft: RET
+
+ 
+
 
 END	
