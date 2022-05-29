@@ -15,14 +15,15 @@ AddressTran EQU 20H
 AddressTemp EQU 60H
 AddressNum1 EQU 30H
 AddressNum2 EQU 40H
-
+AddressResu EQU 50H
+; Cac thanh ghi >=70H tro di dung de lam bo nho tam rieng biet
 Setup: ;Khoi tao cac bien xay dung 
-; A la thanh ghi khong co dinh
+; A, B la thanh ghi khong co dinh
 MOV R0, #AddressTemp ; Pointer of the number sequence(60H - 6FH)
 ; R1 Available
 ; R2 Available
 ; R3 Available
-; R4 #15,
+; R4 #16,
 ; R5 70H,
 ; R6 71H,
 ; R7 #8,
@@ -136,7 +137,7 @@ RET
 ProcessResult: ; Xu ly phep toan xuat ra ket qua
 RET
 
-InitTransportRegister:
+InitTransportRegister:	; @R0 = @R1
 MOV A, @R1
 MOV @R0, A
 INC R0
@@ -164,7 +165,7 @@ PUSH 01H
 SetupConvert:
 DEC R4
 ProcessConvert:	
-ACALL InitTransportRegister	  ; Gan ValueTran = Value @R1 (Number 1 or 2)
+ACALL InitTransportRegister	  ; Gan ValueTran = Value @R1 (Number main(1 or 2 or product))
 POP 01H
 POP 00H
 POP 04H 
@@ -220,7 +221,7 @@ JNC ReCallProcessConvertNumberBCDtoBIN
 ; If(C high) 
 ReCallProcessConvertNumberBCDtoBIN: RET
 
-ProcessAdd:	;Cong Product
+ProcessAdd:	; @R1 += @R0
 MOV A, R0
 ADD A, R4
 MOV R0, A
@@ -247,7 +248,28 @@ JNC ReCallShiftleft
 ; If(C high) check 74H != 0
 ReCallShiftleft: RET
 
- 
+; Xu ly phep cong tru nhan chia 
+Phepcong:
+MOV R0, #AddressNum1
+MOV R1,	#AddressNum0
+MOV R4, #16
+DEC R4
+ACALL ProcessAdd
+MOV R0, #AddressResu
+MOV R1,	#AddressNum0
+MOV R4, #16
+DEC R4
+LCALL InitTransportRegister
+RET
+
+Pheptru:
+RET
+
+Phepnhan:
+RET
+
+Phepchia:
+RET
 
 
 END	
