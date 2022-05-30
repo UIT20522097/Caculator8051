@@ -1,5 +1,5 @@
 ORG 00H
-LJMP 30H
+SJMP 30H
 
 ORG 13H;Xu ly External Interrupt
 ;Trigger(P3.3 low)
@@ -16,7 +16,7 @@ AddressTemp EQU 60H
 AddressNum1 EQU 30H
 AddressNum2 EQU 40H
 AddressResu EQU 50H
-; Cac thanh ghi >=70H tro di dung de lam bo nho tam rieng biet
+; Cac thanh ghi >=70H tro di dung de lam bo nho tam rieng biet (Cac thanh ghi da su dung <=75H)
 Setup: ;Khoi tao cac bien xay dung 
 ; A, B la thanh ghi khong co dinh
 MOV R0, #AddressTemp ; Pointer of the number sequence(60H - 6FH)
@@ -137,6 +137,9 @@ RET
 ProcessResult: ; Xu ly phep toan xuat ra ket qua
 RET
 
+ProcessConvertNumberBINtoBCD:  ; Ket qua tra ve 75H
+
+
 InitTransportRegister:	; @R0 = @R1
 MOV A, @R1
 MOV @R0, A
@@ -165,7 +168,7 @@ PUSH 01H
 SetupConvert:
 DEC R4
 ProcessConvert:	
-ACALL InitTransportRegister	  ; Gan ValueTran = Value @R1 (Number main(1 or 2 or product))
+ACALL InitTransportRegister	  ; Gan ValueTran = Value @R1
 POP 01H
 POP 00H
 POP 04H 
@@ -236,7 +239,20 @@ JNC ReCallProcessAdd
 ; If (C high) ... 
 ReCallProcessAdd: RET
 
-Shiftleft: ; Dich trai thanh ghi Multiplicand
+ProcessSub:	; @R1 -= @R0
+MOV A, R0
+ADD A, R4
+MOV R0, A
+MOV A, R1
+ADD A, R4
+MOV R1, A
+MOV A, @R1
+SUBB A, @R0
+MOV @R1, A
+DJNZ R4, ProcessSub
+ReCallProcessSub: RET
+
+Shiftleft: ; @R0 << 1
 MOV A, R0
 ADD A, R4
 MOV R0, A
@@ -248,21 +264,62 @@ JNC ReCallShiftleft
 ; If(C high) check 74H != 0
 ReCallShiftleft: RET
 
+Process2Complement:	; @R0 = -@R0
+Process1Complement: ; Bu 1
+MOV A, R0
+ADD A, R4
+MOV R0, A
+MOV A, @R0
+CPL A
+MOV @R0, A
+DJNZ R4,Process1Complement
+MOV R0,	#AddressNum1
+MOV R4, #16
+DEC R4
+SETB C
+ProcessInc1:
+MOV A, R0
+ADD A, R4
+MOV R0, A
+MOV A, @R0
+ADDC A, #0
+MOV @R0, A
+DJNZ R4, ProcessInc1
+ReCallProcess2Complement :RET
+
 ; Xu ly phep cong tru nhan chia 
 Phepcong:
-MOV R0, #AddressNum1
-MOV R1,	#AddressNum0
+MOV R0, #AddressNum2
+MOV R1,	#AddressNum1
 MOV R4, #16
 DEC R4
 ACALL ProcessAdd
 MOV R0, #AddressResu
-MOV R1,	#AddressNum0
+MOV R1,	#AddressNum1
 MOV R4, #16
 DEC R4
-LCALL InitTransportRegister
+LCALL InitTransportRegister ;
 RET
 
 Pheptru:
+MOV R0, #AddressNum2
+MOV R1,	#AddressNum1
+MOV R4, #16
+DEC R4
+ACALL ProcessSub
+; Xu ly truong hop so am
+JNC UntilPheptru
+MOV R0,	#AddressNum1
+MOV R4, #16
+DEC R4
+ACALL Process2Complement
+UntilPheptru:
+MOV R0, #AddressResu
+MOV R1,	#AddressNum1
+MOV R4, #16
+DEC R4
+LCALL InitTransportRegister
+SETB C
 RET
 
 Phepnhan:
