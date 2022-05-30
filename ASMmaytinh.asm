@@ -22,11 +22,11 @@ Setup: ;Khoi tao cac bien xay dung
 MOV R0, #AddressTemp ; Pointer of the number sequence(60H - 6FH)
 ; R1 Available
 ; R2 Available
-; R3 Available
-; R4 #16,
+MOV R3, #4 ; R3 #4,
+MOV R4, #8 ; R4 #8,
 ; R5 70H,
 ; R6 71H,
-; R7 #8,
+MOV R7, #16 ; R7 #16,
 MOV IE, #10000100B ; External interrupt with P3.3 
 MOV TMOD, #01H ; Timer 0 mode 1
 Configure: ; Do something
@@ -139,6 +139,7 @@ RET
 
 ProcessConvertNumberBINtoBCD:  ; Ket qua tra ve 75H
 
+RET
 
 InitTransportRegister:	; @R0 = @R1
 MOV A, @R1
@@ -149,8 +150,8 @@ DJNZ R4, InitTransportRegister
 RET
 
 ProcessConvertNumberBCDtoBIN:  ; Chuyen doi so BCD sang Binary
-MOV R7, #8
-MOV R4, #16
+;MOV R7, #8
+;MOV R4, #16
 PUSH 04H
 MOV R0, #AddressTran
 MOV R6, 71H
@@ -176,18 +177,18 @@ Convert: ; Dich phai thanh ghi Multiplier
 MOV A, 74H
 RRC A
 MOV 74H, A
-JC AddAndShiftleft
+JC AddAndShiftLeft
 CLR C
 PUSH 04H
 PUSH 00H
 PUSH 01H
 DEC R4
-ACALL Shiftleft
+ACALL ShiftLeft
 POP 01H
 POP 00H
 POP 04H
 SJMP ReturnConvert 
-AddAndShiftleft: ; Cong Product va dich trai thanh ghi Multiplicand
+AddAndShiftLeft: ; Cong Product va dich trai thanh ghi Multiplicand
 CLR C
 PUSH 04H
 PUSH 00H
@@ -202,7 +203,7 @@ PUSH 04H
 PUSH 00H
 PUSH 01H
 DEC R4
-ACALL Shiftleft
+ACALL ShiftLeft
 POP 01H
 POP 00H
 POP 04H  
@@ -252,17 +253,24 @@ MOV @R1, A
 DJNZ R4, ProcessSub
 ReCallProcessSub: RET
 
-Shiftleft: ; @R0 << 1
+ShiftLeft: ; @R0 << 1 vs  R4 bit
 MOV A, R0
 ADD A, R4
 MOV R0, A
 MOV A, @R0
 RLC A
 MOV @R0, A
-DJNZ R4,Shiftleft
-JNC ReCallShiftleft 
+DJNZ R4,ShiftLeft
 ; If(C high) check 74H != 0
-ReCallShiftleft: RET
+ReCallShiftLeft: RET
+
+ShiftRight: ; @R0 << 1 vs  R4 bit
+MOV A, @R0
+RRC A
+MOV @R0, A
+INC R0
+DJNZ R4,ShiftRight
+ReCallShiftRight: RET
 
 Process2Complement:	; @R0 = -@R0
 Process1Complement: ; Bu 1
@@ -312,14 +320,13 @@ JNC UntilPheptru
 MOV R0,	#AddressNum1
 MOV R4, #16
 DEC R4
-ACALL Process2Complement
+ACALL Process2Complement ; C high
 UntilPheptru:
 MOV R0, #AddressResu
 MOV R1,	#AddressNum1
 MOV R4, #16
 DEC R4
 LCALL InitTransportRegister
-SETB C
 RET
 
 Phepnhan:
