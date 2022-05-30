@@ -141,18 +141,17 @@ ProcessConvertNumberBINtoBCD:  ; Ket qua tra ve 75H
 
 RET
 
-InitTransportRegister:	; @R0 = @R1
+InitTransportRegister:	; @R0 = @R1	vs R3 byte
 MOV A, @R1
 MOV @R0, A
 INC R0
 INC R1
-DJNZ R4, InitTransportRegister
+DJNZ R3, InitTransportRegister
 RET
 
 ProcessConvertNumberBCDtoBIN:  ; Chuyen doi so BCD sang Binary
-;MOV R7, #8
-;MOV R4, #16
 PUSH 04H
+PUSH 03H
 MOV R0, #AddressTran
 MOV R6, 71H
 MOV 74H, #10
@@ -167,165 +166,162 @@ NumberTwo:
 MOV R1, #AddressNum2
 PUSH 01H
 SetupConvert:
-DEC R4
-ProcessConvert:	
+DEC R3
 ACALL InitTransportRegister	  ; Gan ValueTran = Value @R1
 POP 01H
 POP 00H
-POP 04H 
+POP 03H 
 Convert: ; Dich phai thanh ghi Multiplier
 MOV A, 74H
 RRC A
 MOV 74H, A
 JC AddAndShiftLeft
 CLR C
-PUSH 04H
+PUSH 03H
 PUSH 00H
 PUSH 01H
-DEC R4
+DEC R3
 ACALL ShiftLeft
 POP 01H
 POP 00H
-POP 04H
+POP 03H
 SJMP ReturnConvert 
 AddAndShiftLeft: ; Cong Product va dich trai thanh ghi Multiplicand
 CLR C
-PUSH 04H
+PUSH 03H
 PUSH 00H
 PUSH 01H
-DEC R4
+DEC R3
 ACALL ProcessAdd
 CLR C
 POP 01H
 POP 00H
-POP 04H
-PUSH 04H
+POP 03H
+PUSH 03H
 PUSH 00H
 PUSH 01H
-DEC R4
+DEC R3
 ACALL ShiftLeft
 POP 01H
 POP 00H
-POP 04H  
-ReturnConvert:DJNZ R7, Convert
-DEC R4
+POP 03H  
+ReturnConvert:DJNZ R4, Convert
+POP 04H
+DEC R3
 MOV A, R1
-ADD A, R4
+ADD A, R3
 MOV R1, A
 MOV A, @R1
 ADD A, 73H
 UntilProcessConvertNumberBCDtoBIN:
 MOV A, R1
-ADD A, R4
+ADD A, R3
 MOV R1, A
 MOV A, @R1
 ADDC A, #00H
-DJNZ R4, ProcessAdd
-JNC ReCallProcessConvertNumberBCDtoBIN
-; If(C high) 
+DJNZ R3, ProcessAdd
 ReCallProcessConvertNumberBCDtoBIN: RET
 
-ProcessAdd:	; @R1 += @R0
+ProcessAdd:	; @R1 += @R0	R3 byte
 MOV A, R0
-ADD A, R4
+ADD A, R3
 MOV R0, A
 MOV A, R1
-ADD A, R4
+ADD A, R3
 MOV R1, A
 MOV A, @R1
 ADDC A, @R0
 MOV @R1, A
-DJNZ R4, ProcessAdd
-JNC ReCallProcessAdd
+DJNZ R3, ProcessAdd
 ; If (C high) ... 
 ReCallProcessAdd: RET
 
-ProcessSub:	; @R1 -= @R0
+ProcessSub:	; @R1 -= @R0  R3 byte
 MOV A, R0
-ADD A, R4
+ADD A, R3
 MOV R0, A
 MOV A, R1
-ADD A, R4
+ADD A, R3
 MOV R1, A
 MOV A, @R1
 SUBB A, @R0
 MOV @R1, A
-DJNZ R4, ProcessSub
+DJNZ R3, ProcessSub
 ReCallProcessSub: RET
 
-ShiftLeft: ; @R0 << 1 vs  R4 bit
+ShiftLeft: ; @R0 << 1 vs  R3 byte
 MOV A, R0
-ADD A, R4
+ADD A, R3
 MOV R0, A
 MOV A, @R0
 RLC A
 MOV @R0, A
-DJNZ R4,ShiftLeft
+DJNZ R3,ShiftLeft
 ; If(C high) check 74H != 0
 ReCallShiftLeft: RET
 
-ShiftRight: ; @R0 << 1 vs  R4 bit
+ShiftRight: ; @R0 << 1 vs  R3 byte
 MOV A, @R0
 RRC A
 MOV @R0, A
 INC R0
-DJNZ R4,ShiftRight
+DJNZ R3,ShiftRight
 ReCallShiftRight: RET
 
-Process2Complement:	; @R0 = -@R0
+Process2Complement:	; @R0 = -@R0	4 byte
 Process1Complement: ; Bu 1
 MOV A, R0
-ADD A, R4
+ADD A, R3
 MOV R0, A
 MOV A, @R0
 CPL A
 MOV @R0, A
-DJNZ R4,Process1Complement
+DJNZ R3,Process1Complement
 MOV R0,	#AddressNum1
-MOV R4, #16
-DEC R4
+MOV R3, #4
+DEC R3
 SETB C
 ProcessInc1:
 MOV A, R0
-ADD A, R4
+ADD A, R3
 MOV R0, A
 MOV A, @R0
 ADDC A, #0
 MOV @R0, A
-DJNZ R4, ProcessInc1
+DJNZ R3, ProcessInc1
 ReCallProcess2Complement :RET
 
 ; Xu ly phep cong tru nhan chia 
 Phepcong:
 MOV R0, #AddressNum2
 MOV R1,	#AddressNum1
-MOV R4, #16
-DEC R4
+MOV R3, #4
+DEC R3
 ACALL ProcessAdd
 MOV R0, #AddressResu
 MOV R1,	#AddressNum1
-MOV R4, #16
-DEC R4
+MOV R3, #4
+DEC R3
 LCALL InitTransportRegister ;
 RET
 
 Pheptru:
 MOV R0, #AddressNum2
 MOV R1,	#AddressNum1
-MOV R4, #16
-DEC R4
+MOV R3, #4
+DEC R3
 ACALL ProcessSub
 ; Xu ly truong hop so am
 JNC UntilPheptru
 MOV R0,	#AddressNum1
-MOV R4, #16
-DEC R4
+MOV R3, #4
+DEC R3
 ACALL Process2Complement ; C high
 UntilPheptru:
 MOV R0, #AddressResu
 MOV R1,	#AddressNum1
-MOV R4, #16
-DEC R4
+MOV R3, #4
+DEC R3
 LCALL InitTransportRegister
 RET
 
