@@ -20,8 +20,8 @@ AddressResu EQU 50H
 Setup: ;Khoi tao cac bien xay dung 
 ; A, B la thanh ghi khong co dinh
 MOV R0, #AddressTemp ; Pointer of the number sequence(60H - 6FH)
-; R1 Available
-; R2 Available
+; R1 Pointer Dynamic
+MOV R2, #32	; R2, #32,
 MOV R3, #4 ; R3 #4,
 MOV R4, #8 ; R4 #8,
 ; R5 70H,
@@ -260,7 +260,7 @@ DJNZ R3,ShiftLeft
 ; If(C high) check 74H != 0
 ReCallShiftLeft: RET
 
-ShiftRight: ; @R0 << 1 vs  R3 byte
+ShiftRight: ; @R0 >> 1 vs  R3 byte
 MOV A, @R0
 RRC A
 MOV @R0, A
@@ -326,10 +326,89 @@ LCALL InitTransportRegister
 RET
 
 Phepnhan:
+Setupnhan:
+CLR C
+MOV R2, #32
+DEC R2
+Fornhan:
+MOV R0, #AddressNum2
+MOV R3, #4
+DEC R3
+LCALL ShiftRight
+JC ProcessAddInMul
+SJMP ProcessUntilFornhan
+ProcessAddInMul:
+CLR C
+MOV R1, #AddressResu
+MOV R0, #AddressNum1
+MOV R3, #4
+DEC R3
+LCALL ProcessAdd
+ProcessUntilFornhan:
+CLR C
+MOV R0, #AddressNum1
+MOV R3, #4
+DEC R3
+LCALL ShiftLeft
+DJNZ R2, Fornhan
 RET
 
 Phepchia:
+Setupchia:
+MOV R2, #32
+DEC R2
+CLR C
+Forchia:
+MOV R0, #AddressNum1
+MOV R3, #4
+DEC R3
+LCALL ShiftLeft
+MOV R0, #AddressResu
+MOV R3, #4
+DEC R3
+LCALL ShiftLeft
+CLR C
+MOV R0, #AddressTran
+MOV R1, #AddressResu
+MOV R3, #4
+DEC R3
+LCALL InitTransportRegister
+MOV R0, #AddressNum2
+MOV R1, #AddressResu
+MOV R3, #4
+DEC R3
+LCALL ProcessSub
+JNC ProcessNoCYInDivide
+MOV R0, #AddressResu
+MOV R1, #AddressTran
+MOV R3, #4
+DEC R3
+LCALL InitTransportRegister
+SJMP JumpForchia
+ProcessNoCYInDivide:
+SETB C
+MOV R0, #AddressNum1
+MOV R3, #4
+DEC R3
+LCALL ProcessInc1
+JumpForchia: DJNZ R2, Forchia
+; Chuyen Tran = Resu ; Resu = Num1; Num1 = Tran
+MOV R0, #AddressTran
+MOV R1, #AddressResu
+MOV R3, #4
+DEC R3
+LCALL InitTransportRegister
+MOV R0, #AddressResu
+MOV R1, #AddressNum1
+MOV R3, #4
+DEC R3
+LCALL InitTransportRegister
+MOV R0, #AddressNum1
+MOV R1, #AddressTran
+MOV R3, #4
+DEC R3
+LCALL InitTransportRegister
 RET
 
 
-END	
+END
