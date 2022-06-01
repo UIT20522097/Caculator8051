@@ -1,13 +1,14 @@
 ORG 00H
 SJMP 30H
 
-ORG 13H;Xu ly External Interrupt
+ORG 03H ;Xu ly External Interrupt 1	(When press key =)
+;Trigger(P3.2 low)
+
+ORG 13H ;Xu ly External Interrupt 1
 ;Trigger(P3.3 low)
 LCALL GetKeyBoard
 LCALL ProcessKey
-CLR P3.0
 ACALL Delay
-SETB P3.3
 RETI
 
 ORG 30H
@@ -27,11 +28,12 @@ MOV R4, #8 ; R4 #8,
 ; R5 70H,
 ; R6 71H,
 MOV R7, #16 ; R7 #16,
-MOV IE, #10000100B ; External interrupt with P3.3 
-MOV TMOD, #01H ; Timer 0 mode 1
+MOV IE, #10000101B ; External interrupt with P3.3 
+MOV TMOD, #00000001B ; Timer 0 mode 1
 Configure: ; Do something
 
-Reset: ;Reset value
+Reset: ; Control Pin RST
+
 RET
 Delay: ;Create delay time  20ms
 MOV TH0, #HIGH(-20000)
@@ -42,10 +44,7 @@ CLR TF0
 CLR TR0
 RET
 Main:
-JB P3.0, $
-SETB P3.0
-; Do somethings while waiting Presskeyboard
-
+; Waiting Presskeyboard
 SJMP Main
 
 Getkeyboard: ; Get value on the keys
@@ -126,19 +125,40 @@ CJNE R5, #10, DivideOperatorNumber
 DivideOperatorNumber:
 JC KeyNumber
 KeyOperator:
+MOV A, 71H
+JNZ ReCallKeyOperator
 MOV 71H, 70H
-MOV 72H, R0  ; Luu vi tri cua so thu nhat
-RET
+MOV 72H, R0  ; Luu vi tri cuoi cung cua so thu nhat
+; Xuat dau LCD tai day
+ReCallKeyOperator:RET
 KeyNumber:
+MOV R0, 76H
 MOV @R0, 70H
 MOV 73H, @R0
-INC R0
+MOV 76H, R0
+INC 76H
 RET
 ProcessResult: ; Xu ly phep toan xuat ra ket qua
 RET
 
 ProcessConvertNumberBINtoBCD:  ; Ket qua tra ve 75H
-
+SetupConvertNumberBINtoBCD:
+MOV R0, #AddressNum1
+MOV R1, #AddressResu
+MOV R3, #4
+DEC R3
+ACALL InitTransportRegister
+MOV R0, #AddressResu
+MOV R3, #4
+DEC R3
+ACALL CreateRegister
+MOV R0, #AddressNum2
+MOV R3, #4
+DEC R3
+ACALL CreateRegister
+MOV 43H, #10
+LCALL Phepchia
+MOV 75H, 33H
 RET
 
 InitTransportRegister:	; @R0 = @R1	vs R3 byte
@@ -221,6 +241,12 @@ MOV A, @R1
 ADDC A, #00H
 DJNZ R3, ProcessAdd
 ReCallProcessConvertNumberBCDtoBIN: RET
+
+CreateRegister: ; @R0 = 0   R3 byte
+MOV @R0, #0
+INC R0
+DJNZ R3, CreateRegister
+RET
 
 ProcessAdd:	; @R1 += @R0	R3 byte
 MOV A, R0
