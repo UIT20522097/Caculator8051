@@ -17,7 +17,7 @@ AddressTemp EQU 60H
 AddressNum1 EQU 30H
 AddressNum2 EQU 40H
 AddressResu EQU 50H
-; Cac thanh ghi >=70H tro di dung de lam bo nho tam rieng biet (Cac thanh ghi da su dung <=75H)
+; Cac thanh ghi >=70H tro di dung de lam bo nho tam rieng biet (Cac thanh ghi da su dung <=76H)
 Setup: ;Khoi tao cac bien xay dung 
 ; A, B la thanh ghi khong co dinh
 MOV R0, #AddressTemp ; Pointer of the number sequence(60H - 6FH)
@@ -436,5 +436,8 @@ DEC R3
 LCALL InitTransportRegister
 RET
 
+ErrorLabel:	DB "Error"
+OutRangeLable: DB "Out Range"
+RequestLable: DB "Press ON/C"
 
 END
