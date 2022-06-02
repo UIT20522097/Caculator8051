@@ -1,17 +1,17 @@
 ORG 00H
-SJMP 30H
+LJMP Setup
 
 ORG 03H ;Xu ly External Interrupt 1	(When press key =)
 ;Trigger(P3.2 low)
 
 ORG 13H ;Xu ly External Interrupt 1
 ;Trigger(P3.3 low)
-LCALL GetKeyBoard
-LCALL ProcessKey
-ACALL Delay
 RETI
 
 ORG 30H
+RS EQU	P0.0
+RW EQU	P0.1
+EN EQU	P0.2
 AddressTran EQU 20H
 AddressTemp EQU 60H
 AddressNum1 EQU 30H
@@ -26,12 +26,26 @@ MOV R2, #32	; R2, #32,
 MOV R3, #4 ; R3 #4,
 MOV R4, #8 ; R4 #8,
 ; R5 70H,
-; R6 71H,
-MOV R7, #16 ; R7 #16,
-MOV IE, #10000101B ; External interrupt with P3.3 
-MOV TMOD, #00000001B ; Timer 0 mode 1
+; R6 71H, 
+; R7 Available
+MOV IE, #10000100B ; External interrupt with P3.3 and P3.2 
+MOV TMOD, #00010001B ; Timer 0 mode 1
+InitLCD:
+	 MOV 	A, #0FFH	; Loads A with all 1's
+	 MOV 	P2, #00H	; Initializes P2 as output port
+
+	 MOV	A, #01H		; Clear display
+	 CALL	WriteCmd	
+	 MOV	A, #38H		; 8-bit, 2 line, 5x7 dots
+	 CALL	WriteCmd
+	 MOV	A, #0EH		; Display ON cursor, ON
+	 CALL	WriteCmd
+	 MOV	A, #06H		; Auto increment mode, i.e., when we send char, cursor position moves right
+	 CALL	WriteCmd
+	 CALL	Delay1
 Configure: ; Do something
 
+LJMP Main
 Reset: ; Control Pin RST
 
 RET
@@ -43,8 +57,43 @@ JNB TF0, $
 CLR TF0
 CLR TR0
 RET
+
+Delay1: ;Create delay time  20ms
+MOV TH1, #0
+MOV TL1, #0
+SETB TR1
+JNB TF1, $
+CLR TF1
+CLR TR1
+RET
+
+WriteCmd:	
+	MOV 	P2, A	
+	CLR 	RS				; RS = 0 for command
+	CLR 	RW				; RW = 0 for write
+	SETB 	EN				; EN = 1 for high pulse
+	CALL	Delay1			; Call DELAY subroutine
+	CLR 	EN				; EN = 0 for low pulse
+	RET
+WriteData: 	
+	MOV 	P2, A	
+	SETB 	RS				; RS = 1 for data
+	CLR 	RW				; RW = 0 for write
+	SETB 	EN				; EN = 1 for high pulse
+	CALL	Delay1			; Call DELAY subroutine
+	CLR 	EN				; EN = 0 for low pulse
+	RET
+
+WriteResulttoLCD:
+	MOV	A, 75H
+	ADD	A, #00110000B
+	CALL	WriteData
+	RET
 Main:
 ; Waiting Presskeyboard
+LCALL GetKeyBoard
+ACALL Delay
+LCALL ProcessKey
 SJMP Main
 
 Getkeyboard: ; Get value on the keys
@@ -127,18 +176,43 @@ JC KeyNumber
 KeyOperator:
 MOV A, 71H
 JNZ ReCallKeyOperator
+CALL ConvertOperatorToLCD
+CALL WriteData
 MOV 71H, 70H
 MOV 72H, R0  ; Luu vi tri cuoi cung cua so thu nhat
 ; Xuat dau LCD tai day
 ReCallKeyOperator:RET
 KeyNumber:
+;
+MOV	A, 70H
+ADD	A, #00110000B
+CALL WriteData
+;
 MOV R0, 76H
 MOV @R0, 70H
 MOV 73H, @R0
 MOV 76H, R0
 INC 76H
+ACALL ProcessConvertNumberBINtoBCD
 RET
 ProcessResult: ; Xu ly phep toan xuat ra ket qua
+RET
+
+ConvertOperatorToLCD:
+MOV	A, 70H
+CJNE A, #11, Greater11
+MOV A, #00101011B
+RET
+Greater11:
+CJNE A, #12, Greater12
+MOV A, #00101101B
+RET
+Greater12:
+CJNE A, #13, Greater13
+MOV A, #01111000B
+RET
+Greater13:
+MOV A, #11111101B
 RET
 
 ProcessConvertNumberBINtoBCD:  ; Ket qua tra ve 75H
