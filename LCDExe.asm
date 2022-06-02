@@ -29,11 +29,10 @@ Init:
 Main:
 	 MOV	A, 75H
 	 ADD	A, #00110000B
-	 
 	 CALL	WriteData
-	 
+	 SJMP 	$
 WriteCmd:	
-	MOV 	P2, A	; Load OUT_PORT with contents of A
+	MOV 	P2, A	
 	CLR 	RS				; RS = 0 for command
 	CLR 	RW				; RW = 0 for write
 	SETB 	EN				; EN = 1 for high pulse
@@ -41,7 +40,7 @@ WriteCmd:
 	CLR 	EN				; EN = 0 for low pulse
 	RET
 WriteData: 	
-	MOV 	P2, A	; Load OUT_PORT with contents of A
+	MOV 	P2, A	
 	SETB 	RS				; RS = 1 for data
 	CLR 	RW				; RW = 0 for write
 	SETB 	EN				; EN = 1 for high pulse
