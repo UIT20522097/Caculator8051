@@ -12,7 +12,7 @@ EN		EQU	P0.2
 
       org   0100h
 Start:	
-	 MOV	70H, #0
+	 ;MOV	75H, #1
 Init:
 	 MOV 	A, #0FFH	; Loads A with all 1's
 	 MOV 	P2, #00H	; Initializes P2 as output port
@@ -27,14 +27,10 @@ Init:
 	 CALL	WriteCmd
 	 CALL	Delay
 Main:
-	 MOV	A, 70H
-	 MOV	DPTR, #Numbers
-	 MOVC	A, @A+DPTR
+	 MOV	A, 75H
+	 ADD	A, #00110000B
+	 
 	 CALL	WriteData
-	 CALL	Delay
-	 INC	70H
-	 CJNE	A, #10, Main
-	 SJMP 	Start
 	 
 WriteCmd:	
 	MOV 	P2, A	; Load OUT_PORT with contents of A
@@ -58,7 +54,7 @@ L1: 	DJNZ 	R4, L1
 	DJNZ 	R3, L2
 	RET
 	
-Numbers:	DB	'0','1','2','3','4','5','6','7','8','9'
-;Operations:	DB	'+','-','x','/'
+
 ;====================================================================
+Finish:
       END
