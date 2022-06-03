@@ -4,9 +4,6 @@ LJMP Setup
 ORG 03H ;Xu ly External Interrupt 1	(When press key =)
 ;Trigger(P3.2 low)
 
-ORG 13H ;Xu ly External Interrupt 1
-;Trigger(P3.3 low)
-RETI
 
 ORG 30H
 RS EQU	P0.0
@@ -24,10 +21,10 @@ MOV R0, #AddressTemp ; Pointer of the number sequence(60H - 6FH)
 ; R1 Pointer Dynamic
 MOV R2, #32	; R2, #32,
 MOV R3, #4 ; R3 #4,
-MOV R4, #8 ; R4 #8,
-; R5 70H,
-; R6 71H, 
-; R7 Available
+; R4 Value Dynamic
+; R5 Value Dynamic
+; R6 Value Dynamic 
+; R7 Value Dynamic
 MOV IE, #10000100B ; External interrupt with P3.3 and P3.2 
 MOV TMOD, #00010001B ; Timer 0 mode 1
 InitLCD:
@@ -47,7 +44,9 @@ Configure: ; Do something
 
 LJMP Main
 Reset: ; Control Pin RST
-
+CLR P3.0
+CALL Delay
+SETB P3.0
 RET
 Delay: ;Create delay time  20ms
 MOV TH0, #HIGH(-20000)
