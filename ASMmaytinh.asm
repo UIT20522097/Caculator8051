@@ -1,7 +1,7 @@
 ORG 00H
 LJMP Setup
 
-ORG 03H ;Xu ly External Interrupt 1	(When press key =)
+ORG 03H ;Xu ly External Interrupt 1	(When press key On/C)
 ;Trigger(P3.2 low)
 
 
@@ -17,7 +17,7 @@ AddressResu EQU 50H
 ; Cac thanh ghi >=70H tro di dung de lam bo nho tam rieng biet (Cac thanh ghi da su dung <=76H)
 Setup: ;Khoi tao cac bien xay dung 
 ; A, B la thanh ghi khong co dinh
-MOV R0, #AddressTemp ; Pointer of the number sequence(60H - 6FH)
+; R0 Pointer Dynamic
 ; R1 Pointer Dynamic
 MOV R2, #32	; R2, #32,
 MOV R3, #4 ; R3 #4,
@@ -25,8 +25,9 @@ MOV R3, #4 ; R3 #4,
 ; R5 Value Dynamic
 ; R6 Value Dynamic 
 ; R7 Value Dynamic
-MOV IE, #10000100B ; External interrupt with P3.3 and P3.2 
-MOV TMOD, #00010001B ; Timer 0 mode 1
+MOV IE, #10000100B ; External interrupt with P3.2 
+MOV TMOD, #00010001B ; Timer0 mode 1 and Timer1 mode1
+; LCD display
 InitLCD:
 	 MOV 	A, #0FFH	; Loads A with all 1's
 	 MOV 	P2, #00H	; Initializes P2 as output port
@@ -40,15 +41,14 @@ InitLCD:
 	 MOV	A, #06H		; Auto increment mode, i.e., when we send char, cursor position moves right
 	 CALL	WriteCmd
 	 CALL	Delay1
-Configure: ; Do something
-
-LJMP Main
+SJMP Main
 Reset: ; Control Pin RST
 CLR P3.0
 CALL Delay
 SETB P3.0
 RET
-Delay: ;Create delay time  20ms
+
+Delay: ;Create delay time 20ms
 MOV TH0, #HIGH(-20000)
 MOV TL0, #LOW(-20000)
 SETB TR0
@@ -57,7 +57,7 @@ CLR TF0
 CLR TR0
 RET
 
-Delay1: ;Create delay time  20ms
+Delay1: ;Create delay time 65ms
 MOV TH1, #0
 MOV TL1, #0
 SETB TR1
@@ -166,6 +166,7 @@ RET
 Swbang:
 LCALL ProcessResult
 RET
+
 ProcessKey:
 CLR C
 MOV R5, 70H
@@ -178,15 +179,11 @@ JNZ ReCallKeyOperator
 CALL ConvertOperatorToLCD
 CALL WriteData
 MOV 71H, 70H
-MOV 72H, R0  ; Luu vi tri cuoi cung cua so thu nhat
-; Xuat dau LCD tai day
 ReCallKeyOperator:RET
 KeyNumber:
-;
 MOV	A, 70H
 ADD	A, #00110000B
 CALL WriteData
-;
 MOV R0, 76H
 MOV @R0, 70H
 MOV 73H, @R0
@@ -243,7 +240,7 @@ DJNZ R3, InitTransportRegister
 RET
 
 ProcessConvertNumberBCDtoBIN:  ; Chuyen doi so BCD sang Binary
-PUSH 04H
+MOV R3, #4
 PUSH 03H
 MOV R0, #AddressTran
 MOV R6, 71H
@@ -260,7 +257,7 @@ MOV R1, #AddressNum2
 PUSH 01H
 SetupConvert:
 DEC R3
-ACALL InitTransportRegister	  ; Gan ValueTran = Value @R1
+ACALL InitTransportRegister	  ; ValueTran = Value @R1
 POP 01H
 POP 00H
 POP 03H 
