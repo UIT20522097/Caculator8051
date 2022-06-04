@@ -57,7 +57,7 @@ Result:
 	 CALL	Execute
 Next:	 
 	 DJNZ	R7, Execute
-Again:	 SJMP	Again	
+Again:	 SJMP	Negative	
 Execute:
 	 MOV	A, @R0
 	 ADD	A, #00110000B
@@ -65,6 +65,13 @@ Execute:
 	 CALL	Delay
 	 INC	R0
 	 SJMP	Next
+Negative:
+	 MOV	A, #0C0H
+	 CALL	WriteCmd
+	 MOV	A, #00101101B
+	 CALL	WriteData
+	 CALL 	Delay
+	 SJMP	$
 WriteCmd:	
 	MOV 	P2, A	
 	CLR 	RS				; RS = 0 for command
