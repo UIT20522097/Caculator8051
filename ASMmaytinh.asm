@@ -1,9 +1,6 @@
 ORG 00H
 LJMP Setup
 
-ORG 03H ;Xu ly External Interrupt 1	(When press key On/C)
-;Trigger(P3.2 low)
-
 
 ORG 30H
 RS EQU	P0.0
@@ -41,8 +38,8 @@ InitLCD:
 	 CALL	WriteCmd
 	 MOV	A, #06H		; Auto increment mode, i.e., when we send char, cursor position moves right
 	 CALL	WriteCmd
-	 CALL	Delay1
-SJMP Main
+	 CALL	Delay
+LJMP Main
 Reset: ; Control Pin RST
 MOV R0, #00H
 MOV R3, #80H
@@ -74,7 +71,7 @@ WriteCmd:
 	CLR 	RS				; RS = 0 for command
 	CLR 	RW				; RW = 0 for write
 	SETB 	EN				; EN = 1 for high pulse
-	CALL	Delay1			; Call DELAY subroutine
+	CALL	Delay			; Call DELAY subroutine
 	CLR 	EN				; EN = 0 for low pulse
 	RET
 WriteData: 	
@@ -82,20 +79,18 @@ WriteData:
 	SETB 	RS				; RS = 1 for data
 	CLR 	RW				; RW = 0 for write
 	SETB 	EN				; EN = 1 for high pulse
-	CALL	Delay1			; Call DELAY subroutine
+	CALL	Delay			; Call DELAY subroutine
 	CLR 	EN				; EN = 0 for low pulse
 	RET
 
-WriteResulttoLCD:
-	MOV	A, 75H
-	ADD	A, #00110000B
-	CALL	WriteData
-	RET
 Main:
-; Waiting Presskeyboard
-LCALL GetKeyBoard
-ACALL Delay
-LCALL ProcessKey
+; Waiting press keyboard
+CALL GetKeyBoard
+CALL ProcessKey
+CALL Delay1
+CALL Delay1
+CALL Delay1
+CALL Delay1
 SJMP Main
 
 Getkeyboard: ; Get value on the keys
@@ -164,10 +159,14 @@ Swchia:
 MOV 70H, #14
 RET
 Swon:
-LCALL Reset
+CALL Reset
 RET
 Swbang:
-LCALL ProcessResult
+CALL ProcessResult
+MOV	76H, #AddressTemp
+MOV R5, #0
+CALL StoreBCDResult
+CALL ResultDisplay
 RET
 
 ProcessKey:
@@ -187,15 +186,28 @@ KeyNumber:
 MOV	A, 70H
 ADD	A, #00110000B
 CALL WriteData
-MOV R0, 76H
-MOV @R0, 70H
-MOV 73H, @R0
-MOV 76H, R0
-INC 76H
-ACALL ProcessConvertNumberBINtoBCD
+CALL ProcessConvertNumberBCDtoBIN
 RET
+
 ProcessResult: ; Xu ly phep toan xuat ra ket qua
-RET
+MOV	A, 70H
+CJNE A, #11, Greater11R
+CALL Phepcong
+CLR C
+SJMP ReCallProcessResult
+Greater11R:
+CJNE A, #12, Greater12R
+CALL Pheptru
+SJMP ReCallProcessResult
+Greater12R:
+CJNE A, #13, Greater13R
+CALL Phepnhan
+CLR C
+SJMP ReCallProcessResult
+Greater13R:
+CALL Phepchia
+CLR C
+ReCallProcessResult: RET
 
 ConvertOperatorToLCD:
 MOV	A, 70H
@@ -212,6 +224,45 @@ MOV A, #01111000B
 RET
 Greater13:
 MOV A, #11111101B
+RET
+
+ResultNumber:
+	 MOV	R0, #AddressTemp
+	 MOV	A, #0CFH
+	 CALL	WriteCmd
+	 MOV	A, #04H
+	 CALL	WriteCmd
+	 RET	
+Execute:
+	 MOV	A, @R0
+	 ADD	A, #00110000B
+	 CALL	WriteData
+	 INC	R0
+	 RET
+Negative:
+	 MOV	A, #0C0H
+	 CALL	WriteCmd
+	 MOV	A, #00101101B
+	 CALL	WriteData
+
+SetupResultDisplay:
+CALL ResultNumber
+ResultDisplay: ; In ket qua ra man hinh
+CALL Execute
+DJNZ R5, ResultDisplay
+RET
+
+StoreBCDResult:		; Value @76H = BCDNumber
+CALL ProcessConvertNumberBINtoBCD
+MOV R0, 76H
+MOV @R0, 75H
+INC 76H
+INC R5
+MOV R0, #AddressResu
+MOV R3, #4
+DEC R3
+CALL CheckEqualZero
+JNZ StoreBCDResult
 RET
 
 ProcessConvertNumberBINtoBCD:  ; Ket qua tra ve 75H
@@ -234,6 +285,17 @@ LCALL Phepchia
 MOV 75H, 33H
 RET
 
+CheckEqualZero: ; Value @R0 == 0 R3 byte
+MOV A, @R0
+JZ ContinueCheck
+MOV A, #0
+SJMP ReCallCheckEqualZero
+ContinueCheck:
+INC R0
+DJNZ R3, CheckEqualZero
+MOV A, #1
+ReCallCheckEqualZero: RET
+
 InitTransportRegister:	; @R0 = @R1	vs R3 byte
 MOV A, @R1
 MOV @R0, A
@@ -244,12 +306,10 @@ RET
 
 ProcessConvertNumberBCDtoBIN:  ; Chuyen doi so BCD sang Binary
 MOV R3, #4
-PUSH 03H
 MOV R0, #AddressTran
 MOV R6, 71H
 MOV 74H, #10
 CLR C
-PUSH 00H
 CJNE R6,#0, NumberTwo
 NumberOne:
 MOV R1, #AddressNum1
@@ -260,61 +320,63 @@ MOV R1, #AddressNum2
 PUSH 01H
 SetupConvert:
 DEC R3
-ACALL InitTransportRegister	  ; ValueTran = Value @R1
+CALL InitTransportRegister	  ; ValueTran = Value @R1
+MOV A, R1
+MOV R0, A 
+MOV R3, #4
+DEC R3
+CALL CreateRegister  ; Value @R1 = 0 4 byte
 POP 01H
-POP 00H
-POP 03H 
+CLR C
+MOV R4, #4
+DEC R4 
 Convert: ; Dich phai thanh ghi Multiplier
 MOV A, 74H
 RRC A
 MOV 74H, A
 JC AddAndShiftLeft
 CLR C
-PUSH 03H
-PUSH 00H
-PUSH 01H
+MOV	R3, #4
+MOV R0, #AddressTran
 DEC R3
+PUSH 01H
 ACALL ShiftLeft
 CLR C
 POP 01H
-POP 00H
-POP 03H
+MOV	R3, #4
+MOV R0, #AddressTran
+DEC R3
 SJMP ReturnConvert 
 AddAndShiftLeft: ; Cong Product va dich trai thanh ghi Multiplicand
 CLR C
-PUSH 03H
-PUSH 00H
-PUSH 01H
+MOV	R3, #4
+MOV R0, #AddressTran
 DEC R3
+PUSH 01H
 ACALL ProcessAdd
 CLR C
 POP 01H
-POP 00H
-POP 03H
-PUSH 03H
-PUSH 00H
-PUSH 01H
+MOV	R3, #4
+MOV R0, #AddressTran
 DEC R3
+PUSH 01H
 ACALL ShiftLeft
 CLR C
 POP 01H
-POP 00H
-POP 03H  
+MOV	R3, #4
+MOV R0, #AddressTran
+DEC R3  
 ReturnConvert:DJNZ R4, Convert
-POP 04H
+MOV R0, #AddressTran
+MOV	R3, #4
 DEC R3
-MOV A, R1
-ADD A, R3
-MOV R1, A
-MOV A, @R1
-ADD A, 73H
-UntilProcessConvertNumberBCDtoBIN:
-MOV A, R1
-ADD A, R3
-MOV R1, A
-MOV A, @R1
-ADDC A, #00H
-DJNZ R3, ProcessAdd
+CALL CreateRegister
+MOV 23H, 70H 			; Value @Trans = Value Current
+MOV R0, #AddressTran
+MOV	R3, #4
+DEC R3
+CALL ProcessAdd
+CLR C
 ReCallProcessConvertNumberBCDtoBIN: RET
 
 CreateRegister: ; @R0 = 0   R3 byte
@@ -382,7 +444,7 @@ MOV R0,	#AddressNum1
 MOV R3, #4
 DEC R3
 SETB C
-ProcessInc1:
+ProcessInc1: ; Value @R0 ++ R3 byte
 MOV A, R0
 ADD A, R3
 MOV R0, A
@@ -418,6 +480,7 @@ MOV R0,	#AddressNum1
 MOV R3, #4
 DEC R3
 ACALL Process2Complement ; C high
+SETB C
 UntilPheptru:
 MOV R0, #AddressResu
 MOV R1,	#AddressNum1
