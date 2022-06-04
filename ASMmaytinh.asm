@@ -15,7 +15,8 @@ AddressNum1 EQU 30H
 AddressNum2 EQU 40H
 AddressResu EQU 50H
 ; Cac thanh ghi >=70H tro di dung de lam bo nho tam rieng biet (Cac thanh ghi da su dung <=76H)
-Setup: ;Khoi tao cac bien xay dung 
+Setup: ;Khoi tao cac bien xay dung
+CLR P3.0 
 ; A, B la thanh ghi khong co dinh
 ; R0 Pointer Dynamic
 ; R1 Pointer Dynamic
@@ -43,8 +44,10 @@ InitLCD:
 	 CALL	Delay1
 SJMP Main
 Reset: ; Control Pin RST
-CLR P3.0
-CALL Delay
+MOV R0, #00H
+MOV R3, #80H
+DEC R3
+LCALL CreateRegister
 SETB P3.0
 RET
 
@@ -272,6 +275,7 @@ PUSH 00H
 PUSH 01H
 DEC R3
 ACALL ShiftLeft
+CLR C
 POP 01H
 POP 00H
 POP 03H
@@ -292,6 +296,7 @@ PUSH 00H
 PUSH 01H
 DEC R3
 ACALL ShiftLeft
+CLR C
 POP 01H
 POP 00H
 POP 03H  
