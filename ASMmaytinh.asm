@@ -13,17 +13,16 @@ AddressNum2 EQU 40H
 AddressResu EQU 50H
 ; Cac thanh ghi >=70H tro di dung de lam bo nho tam rieng biet (Cac thanh ghi da su dung <=76H)
 Setup: ;Khoi tao cac bien xay dung
-CLR P3.0 
 ; A, B la thanh ghi khong co dinh
 ; R0 Pointer Dynamic
 ; R1 Pointer Dynamic
-MOV R2, #32	; R2, #32,
+MOV R2, #32 ; R2, #32,
 MOV R3, #4 ; R3 #4,
 ; R4 Value Dynamic
 ; R5 Value Dynamic
 ; R6 Value Dynamic 
-; R7 Value Dynamic
-MOV IE, #10000100B ; External interrupt with P3.2 
+; R7 = 3 and Value Dynamic
+;MOV IE, #10000100B ; External interrupt with P3.2 
 MOV TMOD, #00010001B ; Timer0 mode 1 and Timer1 mode1
 ; LCD display
 InitLCD:
@@ -40,12 +39,11 @@ InitLCD:
 	 CALL	WriteCmd
 	 CALL	Delay
 LJMP Main
-Reset: ; Control Pin RST
+lReset: ; Control Pin RST
 MOV R0, #00H
 MOV R3, #80H
-DEC R3
 LCALL CreateRegister
-SETB P3.0
+CLR P3.0
 RET
 
 Delay: ;Create delay time 20ms
@@ -94,7 +92,7 @@ CALL Delay1
 SJMP Main
 
 Getkeyboard: ; Get value on the keys
-MOV P1,#0FEH ; Keys: 7,8,9,÷
+MOV P1,#0FEH ; Keys: 7,8,9,ï¿½
 JNB P1.4,Sw7
 JNB P1.5,Sw8
 JNB P1.6,Sw9
@@ -159,14 +157,14 @@ Swchia:
 MOV 70H, #14
 RET
 Swon:
-CALL Reset
+CALL  lReset
 RET
 Swbang:
 CALL ProcessResult
-MOV	76H, #AddressTemp
-MOV R5, #0
+MOV  76H, #AddressResu
+MOV  R5, #0
 CALL StoreBCDResult
-CALL ResultDisplay
+CALL SetupResultDisplay
 RET
 
 ProcessKey:
@@ -190,7 +188,7 @@ CALL ProcessConvertNumberBCDtoBIN
 RET
 
 ProcessResult: ; Xu ly phep toan xuat ra ket qua
-MOV	A, 70H
+MOV	A, 71H
 CJNE A, #11, Greater11R
 CALL Phepcong
 CLR C
@@ -227,7 +225,7 @@ MOV A, #11111101B
 RET
 
 ResultNumber:
-	 MOV	R0, #AddressTemp
+	 MOV	R0, #AddressNum1
 	 MOV	A, #0CFH
 	 CALL	WriteCmd
 	 MOV	A, #04H
@@ -247,6 +245,7 @@ Negative:
 
 SetupResultDisplay:
 CALL ResultNumber
+MOV R5, #4
 ResultDisplay: ; In ket qua ra man hinh
 CALL Execute
 DJNZ R5, ResultDisplay
@@ -254,13 +253,13 @@ RET
 
 StoreBCDResult:		; Value @76H = BCDNumber
 CALL ProcessConvertNumberBINtoBCD
-MOV R0, 76H
+MOV R0, 76H ; Value @76H = AddressTemp
 MOV @R0, 75H
 INC 76H
 INC R5
 MOV R0, #AddressResu
 MOV R3, #4
-DEC R3
+
 CALL CheckEqualZero
 JNZ StoreBCDResult
 RET
@@ -270,22 +269,22 @@ SetupConvertNumberBINtoBCD:
 MOV R0, #AddressNum1
 MOV R1, #AddressResu
 MOV R3, #4
-DEC R3
-ACALL InitTransportRegister
+CALL InitTransportRegister
+
 MOV R0, #AddressResu
 MOV R3, #4
-DEC R3
-ACALL CreateRegister
+CALL CreateRegister
+
 MOV R0, #AddressNum2
 MOV R3, #4
-DEC R3
-ACALL CreateRegister
+CALL CreateRegister
+
 MOV 43H, #10
 LCALL Phepchia
 MOV 75H, 33H
 RET
 
-CheckEqualZero: ; Value @R0 == 0 R3 byte
+CheckEqualZero: ; If Value @R0 == 0 R3 byte then A = 1 else A = 0
 MOV A, @R0
 JZ ContinueCheck
 MOV A, #0
@@ -319,17 +318,16 @@ NumberTwo:
 MOV R1, #AddressNum2
 PUSH 01H
 SetupConvert:
-DEC R3
+
 CALL InitTransportRegister	  ; ValueTran = Value @R1
 MOV A, R1
 MOV R0, A 
 MOV R3, #4
-DEC R3
+
 CALL CreateRegister  ; Value @R1 = 0 4 byte
 POP 01H
 CLR C
-MOV R4, #4
-DEC R4 
+MOV R4, #4 
 Convert: ; Dich phai thanh ghi Multiplier
 MOV A, 74H
 RRC A
@@ -338,45 +336,46 @@ JC AddAndShiftLeft
 CLR C
 MOV	R3, #4
 MOV R0, #AddressTran
-DEC R3
+MOV R7, #3
 PUSH 01H
 ACALL ShiftLeft
 CLR C
 POP 01H
 MOV	R3, #4
 MOV R0, #AddressTran
-DEC R3
+MOV R7, #3
 SJMP ReturnConvert 
 AddAndShiftLeft: ; Cong Product va dich trai thanh ghi Multiplicand
 CLR C
 MOV	R3, #4
 MOV R0, #AddressTran
-DEC R3
+MOV R7, #3
 PUSH 01H
 ACALL ProcessAdd
 CLR C
 POP 01H
 MOV	R3, #4
 MOV R0, #AddressTran
-DEC R3
+MOV R7, #3
 PUSH 01H
 ACALL ShiftLeft
 CLR C
 POP 01H
 MOV	R3, #4
 MOV R0, #AddressTran
-DEC R3  
+MOV R7, #3
 ReturnConvert:DJNZ R4, Convert
 MOV R0, #AddressTran
 MOV	R3, #4
-DEC R3
 CALL CreateRegister
 MOV 23H, 70H 			; Value @Trans = Value Current
 MOV R0, #AddressTran
 MOV	R3, #4
-DEC R3
+MOV R7, #3
 CALL ProcessAdd
 CLR C
+;	TEST NUMBER
+;CALL SetupResultDisplay
 ReCallProcessConvertNumberBCDtoBIN: RET
 
 CreateRegister: ; @R0 = 0   R3 byte
@@ -387,38 +386,41 @@ RET
 
 ProcessAdd:	; @R1 += @R0	R3 byte
 MOV A, R0
-ADD A, R3
+ADD A, R7
 MOV R0, A
 MOV A, R1
-ADD A, R3
+ADD A, R7
 MOV R1, A
 MOV A, @R1
 ADDC A, @R0
 MOV @R1, A
+DEC R7
 DJNZ R3, ProcessAdd
 ; If (C high) ... 
 ReCallProcessAdd: RET
 
 ProcessSub:	; @R1 -= @R0  R3 byte
 MOV A, R0
-ADD A, R3
+ADD A, R7
 MOV R0, A
 MOV A, R1
-ADD A, R3
+ADD A, R7
 MOV R1, A
 MOV A, @R1
 SUBB A, @R0
 MOV @R1, A
+DEC R7
 DJNZ R3, ProcessSub
 ReCallProcessSub: RET
 
 ShiftLeft: ; @R0 << 1 vs  R3 byte
 MOV A, R0
-ADD A, R3
+ADD A, R7
 MOV R0, A
 MOV A, @R0
 RLC A
 MOV @R0, A
+DEC R7
 DJNZ R3,ShiftLeft
 ; If(C high) check 74H != 0
 ReCallShiftLeft: RET
@@ -434,23 +436,25 @@ ReCallShiftRight: RET
 Process2Complement:	; @R0 = -@R0	4 byte
 Process1Complement: ; Bu 1
 MOV A, R0
-ADD A, R3
+ADD A, R7
 MOV R0, A
 MOV A, @R0
 CPL A
 MOV @R0, A
+DEC R7
 DJNZ R3,Process1Complement
 MOV R0,	#AddressNum1
 MOV R3, #4
-DEC R3
 SETB C
+MOV R7, #3
 ProcessInc1: ; Value @R0 ++ R3 byte
 MOV A, R0
-ADD A, R3
+ADD A, R7
 MOV R0, A
 MOV A, @R0
 ADDC A, #0
 MOV @R0, A
+DEC R7
 DJNZ R3, ProcessInc1
 ReCallProcess2Complement :RET
 
@@ -459,12 +463,12 @@ Phepcong:
 MOV R0, #AddressNum2
 MOV R1,	#AddressNum1
 MOV R3, #4
-DEC R3
+
 ACALL ProcessAdd
 MOV R0, #AddressResu
 MOV R1,	#AddressNum1
 MOV R3, #4
-DEC R3
+
 LCALL InitTransportRegister ;
 RET
 
@@ -472,20 +476,20 @@ Pheptru:
 MOV R0, #AddressNum2
 MOV R1,	#AddressNum1
 MOV R3, #4
-DEC R3
+
 ACALL ProcessSub
 ; Xu ly truong hop so am
 JNC UntilPheptru
 MOV R0,	#AddressNum1
 MOV R3, #4
-DEC R3
+
 ACALL Process2Complement ; C high
 SETB C
 UntilPheptru:
 MOV R0, #AddressResu
 MOV R1,	#AddressNum1
 MOV R3, #4
-DEC R3
+
 LCALL InitTransportRegister
 RET
 
@@ -493,11 +497,10 @@ Phepnhan:
 Setupnhan:
 CLR C
 MOV R2, #32
-DEC R2
 Fornhan:
 MOV R0, #AddressNum2
 MOV R3, #4
-DEC R3
+
 LCALL ShiftRight
 JC ProcessAddInMul
 SJMP ProcessUntilFornhan
@@ -506,13 +509,13 @@ CLR C
 MOV R1, #AddressResu
 MOV R0, #AddressNum1
 MOV R3, #4
-DEC R3
+MOV R7, #3
 LCALL ProcessAdd
 ProcessUntilFornhan:
 CLR C
 MOV R0, #AddressNum1
 MOV R3, #4
-DEC R3
+MOV R7, #3
 LCALL ShiftLeft
 DJNZ R2, Fornhan
 RET
@@ -520,58 +523,61 @@ RET
 Phepchia:
 Setupchia:
 MOV R2, #32
-DEC R2
 CLR C
 Forchia:
 MOV R0, #AddressNum1
 MOV R3, #4
-DEC R3
+MOV R7, #3
 LCALL ShiftLeft
+
 MOV R0, #AddressResu
 MOV R3, #4
-DEC R3
+MOV R7, #3
 LCALL ShiftLeft
+
 CLR C
 MOV R0, #AddressTran
 MOV R1, #AddressResu
 MOV R3, #4
-DEC R3
 LCALL InitTransportRegister
+
 MOV R0, #AddressNum2
 MOV R1, #AddressResu
 MOV R3, #4
-DEC R3
+MOV R7, #3
 LCALL ProcessSub
+
 JNC ProcessNoCYInDivide
 MOV R0, #AddressResu
 MOV R1, #AddressTran
 MOV R3, #4
-DEC R3
 LCALL InitTransportRegister
+
 SJMP JumpForchia
 ProcessNoCYInDivide:
 SETB C
 MOV R0, #AddressNum1
 MOV R3, #4
-DEC R3
+MOV R7, #3
 LCALL ProcessInc1
+
 JumpForchia: DJNZ R2, Forchia
 ; Chuyen Tran = Resu ; Resu = Num1; Num1 = Tran
 MOV R0, #AddressTran
 MOV R1, #AddressResu
 MOV R3, #4
-DEC R3
 LCALL InitTransportRegister
+
 MOV R0, #AddressResu
 MOV R1, #AddressNum1
 MOV R3, #4
-DEC R3
 LCALL InitTransportRegister
+
 MOV R0, #AddressNum1
 MOV R1, #AddressTran
 MOV R3, #4
-DEC R3
 LCALL InitTransportRegister
+
 RET
 
 ErrorLabel:	DB "Error"
