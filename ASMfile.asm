@@ -214,6 +214,8 @@ MOV A, #11111101B
 RET
 
 ResultNumber:
+	 MOV	A, #0CH
+	 CALL	WriteCmd
 	 MOV	A, #0CFH
 	 CALL	WriteCmd
 	 MOV	A, #04H
@@ -231,11 +233,16 @@ Negative:
 	 CALL	WriteCmd
 	 MOV	A, #00101101B
 	 CALL	WriteData
-
+Error:
+	 CLR	A
+	 MOV	DPTR, #Error1
+	 MOVC	A, @A + DPTR
+OutRange:
+	 CLR	A
+	 MOV	DPTR, #OutRange1
+	 MOVC	A, @A + DPTR
 SetupResultDisplay:
 CALL ResultNumber
-RET
-
 ResultDisplay: ; In ket qua ra man hinh
 CALL Execute
 DJNZ R5, ResultDisplay
@@ -298,4 +305,6 @@ MOV A, 50H
 JNZ ProcessConvertNumberBINtoBCD
 RET 
 
+Error1: DB	"Error!"
+OutRange1: DB	"Out of range!"
 END
