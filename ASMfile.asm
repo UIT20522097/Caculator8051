@@ -179,6 +179,9 @@ RET
 
 ProcessResult: ; Xu ly phep toan xuat ra ket qua
 MOV	A, 71H
+JNZ ContinueProcessResult
+MOV A, #11
+ContinueProcessResult:
 CJNE A, #11, Greater11R
 CALL Phepcong
 SJMP ReCallProcessResult
